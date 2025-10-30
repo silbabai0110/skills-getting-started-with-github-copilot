@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
           <div class="participants">
             <h5>Participants</h5>
-            <ul class="participants-list"></ul>
+            <ul class="participants-list" style="list-style: none; padding-left: 0;"></ul>
           </div>
         `;
 
@@ -42,16 +42,46 @@ document.addEventListener("DOMContentLoaded", () => {
         if (Array.isArray(details.participants) && details.participants.length > 0) {
           details.participants.forEach((p) => {
             const li = document.createElement("li");
+            li.style.display = "flex";
+            li.style.alignItems = "center";
+            li.style.gap = "8px";
             const span = document.createElement("span");
             span.className = "participant-name";
-            // If participant is an object with name/email, adapt accordingly
-            // Prefer name property if available; otherwise, stringify value
             const displayName =
               (typeof p === "object" && p !== null && (p.name || p.email)) ?
                 (p.name || p.email) :
                 String(p);
             span.textContent = displayName;
             li.appendChild(span);
+            // Add delete icon
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "delete-participant";
+            deleteBtn.innerHTML = "&#128465;"; // Trash can icon
+            deleteBtn.title = "Remove participant";
+            deleteBtn.style.background = "none";
+            deleteBtn.style.border = "none";
+            deleteBtn.style.cursor = "pointer";
+            deleteBtn.style.color = "#d32f2f";
+            deleteBtn.style.fontSize = "1.1em";
+            deleteBtn.addEventListener("click", async (e) => {
+              e.stopPropagation();
+              // Unregister participant logic
+              try {
+                const participantId = (typeof p === "object" && p !== null && p.email) ? p.email : p;
+                const res = await fetch(
+                  `/activities/${encodeURIComponent(name)}/unregister?email=${encodeURIComponent(participantId)}`,
+                  { method: "POST" }
+                );
+                if (res.ok) {
+                  await fetchActivities();
+                } else {
+                  alert("Failed to remove participant.");
+                }
+              } catch (err) {
+                alert("Error removing participant.");
+              }
+            });
+            li.appendChild(deleteBtn);
             participantsList.appendChild(li);
           });
         } else {
@@ -96,6 +126,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Refresh activities list after successful registration
+        await fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
